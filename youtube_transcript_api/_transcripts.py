@@ -10,6 +10,7 @@ from defusedxml import ElementTree
 
 import re
 
+import requests
 from requests import HTTPError, Session, Response
 
 from .proxies import ProxyConfig
@@ -130,7 +131,48 @@ class Transcript:
         Loads the actual transcript data.
         :param preserve_formatting: whether to keep select HTML text formatting
         """
-        response = self._http_client.get(self._url)
+        
+        USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Origin': 'https://www.youtube.com',
+            'Referer': f'https://www.youtube.com/watch?v={self.video_id}',
+            'User-Agent': USER_AGENT
+        }
+
+        payload = {
+            "context": {
+                "client": {
+                    "clientName": "WEB",
+                    "clientVersion": "2.20240304.00.00",
+                    "hl": "en",
+                    "gl": "US",
+                    "userAgent": USER_AGENT
+                }
+            },
+            "videoId": self.video_id,
+            "playbackContext": {
+                "contentPlaybackContext": {
+                    "currentUrl": f"/watch?v={self.video_id}",
+                    "vis": 0,
+                    "splay": False,
+                    "autoCaptionsDefaultOn": False,
+                    "autonavState": "STATE_NONE",
+                    "html5Preference": "HTML5_PREF_WANTS",
+                    "lactThreshold": -1
+                }
+            },
+            "racyCheckOk": False,
+            "contentCheckOk": False
+        }
+
+        response = requests.post(
+            "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
+            headers=headers,
+            data=json.dumps(payload)
+        )
+        
         snippets = _TranscriptParser(preserve_formatting=preserve_formatting).parse(
             _raise_http_errors(response, self.video_id).text,
         )
