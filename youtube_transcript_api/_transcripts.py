@@ -10,7 +10,6 @@ from defusedxml import ElementTree
 
 import re
 
-import requests
 from requests import HTTPError, Session, Response
 
 from .proxies import ProxyConfig
@@ -86,7 +85,7 @@ class _PlayabilityStatus(str, Enum):
 
 
 class _PlayabilityFailedReason(str, Enum):
-    BOT_DETECTED = "Sign in to confirm you’re not a bot"
+    BOT_DETECTED = "Sign in to confirm you're not a bot"
     AGE_RESTRICTED = "Sign in to confirm your age"
     VIDEO_UNAVAILABLE = "Video unavailable"
 
@@ -131,13 +130,8 @@ class Transcript:
         Loads the actual transcript data.
         :param preserve_formatting: whether to keep select HTML text formatting
         """
-        
-        USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 
-        # Příklad volitelné konfigurace
-        config = {
-            "lang": "en"  # nebo None, pokud nechceš nastavovat Accept-Language
-        }
+        USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 
         headers = {
             'Content-Type': 'application/json',
@@ -145,9 +139,6 @@ class Transcript:
             'Referer': f'https://www.youtube.com/watch?v={self.video_id}',
             'User-Agent': USER_AGENT
         }
-
-        if config.get("lang"):
-            headers['Accept-Language'] = config['lang']
 
         payload = {
             "context": {
@@ -175,8 +166,8 @@ class Transcript:
             "contentCheckOk": False
         }
 
-        response = requests.post(
-            "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",  # nebo jiná cílová URL
+        response = self._http_client.post(
+            "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
             headers=headers,
             data=json.dumps(payload)
         )
@@ -189,18 +180,18 @@ class Transcript:
             .get('captionTracks', [])
         )
 
-        # Filtrování podle jazyka
         filtered_captions = [
             track for track in caption_tracks
             if track.get('name').get('simpleText') == self.language
         ]
 
-        transcriptResponse = requests.get(filtered_captions[0].get('baseUrl'), headers=headers)
+        transcriptResponse = self._http_client.get(filtered_captions[0].get('baseUrl'), headers=headers)
         if not transcriptResponse.ok:
             raise TranslationLanguageNotAvailable(self.video_id)
-        
+
+
         snippets = _TranscriptParser(preserve_formatting=preserve_formatting).parse(
-            _raise_http_errors(response, self.video_id).text,
+            _raise_http_errors(transcriptResponse, self.video_id).text,
         )
         return FetchedTranscript(
             snippets=snippets,
