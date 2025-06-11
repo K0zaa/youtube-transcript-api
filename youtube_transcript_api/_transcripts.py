@@ -134,12 +134,20 @@ class Transcript:
         
         USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 
+        # Příklad volitelné konfigurace
+        config = {
+            "lang": "en"  # nebo None, pokud nechceš nastavovat Accept-Language
+        }
+
         headers = {
             'Content-Type': 'application/json',
             'Origin': 'https://www.youtube.com',
             'Referer': f'https://www.youtube.com/watch?v={self.video_id}',
             'User-Agent': USER_AGENT
         }
+
+        if config.get("lang"):
+            headers['Accept-Language'] = config['lang']
 
         payload = {
             "context": {
@@ -168,10 +176,28 @@ class Transcript:
         }
 
         response = requests.post(
-            "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
+            "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",  # nebo jiná cílová URL
             headers=headers,
             data=json.dumps(payload)
         )
+
+        captions_data = response.json()
+        caption_tracks = (
+            captions_data
+            .get('captions', {})
+            .get('playerCaptionsTracklistRenderer', {})
+            .get('captionTracks', [])
+        )
+
+        # Filtrování podle jazyka
+        filtered_captions = [
+            track for track in caption_tracks
+            if track.get('name').get('simpleText') == self.language
+        ]
+
+        transcriptResponse = requests.get(filtered_captions[0].get('baseUrl'), headers=headers)
+        if not transcriptResponse.ok:
+            raise TranslationLanguageNotAvailable(self.video_id)
         
         snippets = _TranscriptParser(preserve_formatting=preserve_formatting).parse(
             _raise_http_errors(response, self.video_id).text,
