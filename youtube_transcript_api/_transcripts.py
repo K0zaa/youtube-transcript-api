@@ -166,18 +166,10 @@ class Transcript:
             "contentCheckOk": False
         }
         
-        proxy_url = "http://customer-k0zaa_Sv2PG-sessid-0424655437-sesstime-10:Kokot123456%2B@pr.oxylabs.io:7777"
-
-        proxies = {
-            "http": proxy_url,
-            "https": proxy_url,
-        }
-
         response = self._http_client.post(
             "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
             headers=headers,
             data=json.dumps(payload),
-            proxies=proxies,
             timeout=15
         )
         
@@ -448,7 +440,7 @@ class TranscriptListFetcher:
             # This should never happen!
             raise e  # pragma: no cover
 
-        self._assert_playability(video_data.get("playabilityStatus"), video_id)
+        self._assert_playability(video_data.get("playabilityStatus") or {}, video_id)
 
         captions_json = video_data.get("captions", {}).get(
             "playerCaptionsTracklistRenderer"
