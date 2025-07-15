@@ -172,9 +172,6 @@ class Transcript:
             data=json.dumps(payload),
             timeout=15
         )
-        
-        print(response.status_code)
-        print(response.text)
 
         captions_data = response.json()
         caption_tracks = (
